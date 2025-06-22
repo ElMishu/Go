@@ -21,75 +21,38 @@ var (
 	acumulado      int
 )
 
-/*
-	func main() {
-		const canttareas int = 20 // quiero que se generen aleatoriamente X tareas
-		var tareas []Tarea        // creo slice en donde voy a guardar las tareas a generar
-		for i := 0; i < canttareas; i++ {
-			valor := rand.Intn(500) + 1                 // genera aleatorios entre 1 y 500
-			prio := rand.Intn(4)                        // entre 0 y 3
-			tareas = append(tareas, Tarea{prio, valor}) //agrega la tarea al slice de tareas
-		}
-
-		// muestra las tareas generadas
-		for _, t := range tareas {
-			fmt.Printf("Tarea generada -> Prioridad: %d, Valor: %d\n", t.Prioridad, t.Valor)
-		}
-
-		tareaCh := make(chan Tarea) //crea el canal donde se van a ir mandando las tareas
-
-		for i := 1; i <= 4; i++ { // inicia a los 4 workers
-			go worker(i, tareaCh, &wg) // i= numero de identificador del worker, le mando el canal de tareas y el &wg para luego avisar que finalizo
-		}
-
-		for prioridad := 0; prioridad <= 3; prioridad++ { // Scheduler: envía tareas en orden de prioridad
-			for _, tarea := range tareas { //recorre el slice de tareas
-				if tarea.Prioridad == prioridad { // si la prioridad de la tarea es igual a la prioridad que estoy iterando
-					wg.Add(1)        // le aviso al WaitGroup que se va a agregar una tarea más
-					tareaCh <- tarea // envia la tarea al canal para que un worker la procese
-				}
-			}
-			wg.Wait() // espera a que todas las tareas de la prioridad actual se procesen antes de pasar a la siguiente
-		}
-
-		close(tareaCh) // cierra el canal de tareas para que los workers sepan que no hay más tareas
-		fmt.Println("Todas las tareas fueron procesadas.")
-	}
-*/
 func main() {
-	const canttareas int = 20
-	var tareas []Tarea
+	const canttareas int = 20 // quiero que se generen aleatoriamente X tareas
+	var tareas []Tarea        // creo slice en donde voy a guardar las tareas a generar
 	for i := 0; i < canttareas; i++ {
-		valor := rand.Intn(500) + 1
-		prio := rand.Intn(4)
-		tareas = append(tareas, Tarea{prio, valor})
+		valor := rand.Intn(500) + 1                 // genera numeros aleatorios entre 1 y 500
+		prio := rand.Intn(4)                        // genera prioridades entre 0 y 3
+		tareas = append(tareas, Tarea{prio, valor}) // agrega la tarea al slice de tareas
 	}
 
-	for _, t := range tareas {
+	for _, t := range tareas { // muestra las tareas generadas
 		fmt.Printf("Tarea generada -> Prioridad: %d, Valor: %d\n", t.Prioridad, t.Valor)
 	}
 
-	tareaCh := make(chan Tarea)
+	tareaCh := make(chan Tarea) // crea el canal donde se van a ir mandando las tareas
 
 	// Inicializo wg con la cantidad total de tareas
 	wg.Add(len(tareas))
 
-	// Iniciar 4 workers
+	// Iniciar a los 4 workers
 	for i := 1; i <= 4; i++ {
-		go worker(i, tareaCh, &wg)
+		go worker(i, tareaCh, &wg) // i= numero de identificador del worker, le mando el canal de tareas y el &wg para luego avisar que finalizo
 	}
 
-	// Scheduler dinámico: manda todas las tareas al canal en orden de prioridad
-	go func() {
-		for prioridad := 0; prioridad <= 3; prioridad++ {
-			for _, tarea := range tareas {
-				if tarea.Prioridad == prioridad {
-					tareaCh <- tarea
-				}
+	// Scheduler: envía tareas en orden de prioridad
+	for prioridad := 0; prioridad <= 3; prioridad++ { // itera prioridades de 0 a 3
+		for _, tarea := range tareas { // recorre el slice de tareas
+			if tarea.Prioridad == prioridad { // si la prioridad de la tarea es igual a la prioridad que estoy iterando
+				tareaCh <- tarea // envía la tarea al canal para que un worker la procese
 			}
 		}
-		close(tareaCh)
-	}()
+	}
+	close(tareaCh) // cierra el canal de tareas para que los workers sepan que no hay más tareas
 
 	wg.Wait()
 	fmt.Println("Todas las tareas fueron procesadas.")
