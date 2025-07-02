@@ -22,6 +22,7 @@ var (
 )
 
 func main() {
+	start := time.Now()
 	const canttareas int = 5                       // quiero que se generen aleatoriamente X tareas
 	var tareas []Tarea                             // creo slice en donde voy a guardar las tareas a generar
 	os.WriteFile("prioridad0.txt", []byte{}, 0644) // crea el archivo prioridad0.txt si no existe y lo vacía
@@ -38,16 +39,16 @@ func main() {
 		fmt.Printf("Tarea Prioridad: %d, Valor: %d\n", t.Prioridad, t.Valor)
 	}
 
-	tareaCh := make(chan Tarea) // crea el canal donde se van a ir mandando las tareas
-
+	tareaCh := make(chan Tarea)  // crea el canal donde se van a ir mandando las tareas
+	var grupos [4]sync.WaitGroup // Cambiamos a un WaitGroup por prioridad
 	// Iniciar a los 4 workers
 	for i := 1; i <= 4; i++ {
-		go worker(i, tareaCh, &wg) // i= numero de identificador del worker, le mando el canal de tareas y el &wg para luego avisar que finalizo
+		go worker(i, tareaCh, &grupos)
 	}
 
 	// Scheduler:
 	//  envía tareas en orden de prioridad
-	for prioridad := 0; prioridad <= 3; prioridad++ {
+	/*for prioridad := 0; prioridad <= 3; prioridad++ {
 		for _, tarea := range tareas {
 			if tarea.Prioridad == prioridad {
 				wg.Add(1)
@@ -56,13 +57,28 @@ func main() {
 		}
 		wg.Wait() // Espera a que terminen TODAS las tareas de esta prioridad
 	}
+	*/
+
+	// Scheduler
+	for prioridad := 0; prioridad <= 3; prioridad++ {
+		for _, tarea := range tareas {
+			if tarea.Prioridad == prioridad {
+				grupos[prioridad].Add(1)
+				tareaCh <- tarea
+			}
+		}
+		grupos[prioridad].Wait()
+	}
+
 	close(tareaCh)
 	fmt.Println("Todas las tareas fueron procesadas.")
 	mostrarContenidoArchivo("prioridad0.txt")
 	mostrarContenidoArchivo("prioridad1.txt")
+	elapsed := time.Since(start)
+	fmt.Println("Tiempo total de ejecución:", elapsed)
 }
 
-func worker(id int, tareas <-chan Tarea, wg *sync.WaitGroup) {
+func worker(id int, tareas <-chan Tarea, grupos *[4]sync.WaitGroup) {
 	for tarea := range tareas { // recibe tareas del canal
 		fmt.Printf("Worker %d procesando tarea = Prioridad: %d, Valor: %d\n", id, tarea.Prioridad, tarea.Valor)
 		switch tarea.Prioridad {
@@ -105,7 +121,7 @@ func worker(id int, tareas <-chan Tarea, wg *sync.WaitGroup) {
 			mutexAcumulado.Unlock()                                                 // desbloquea acceso a la variable acumulado
 		}
 		time.Sleep(200 * time.Millisecond) // simulacion de trabajo
-		wg.Done()
+		grupos[tarea.Prioridad].Done()     //  Done solo cuando termina de procesar
 	}
 }
 
